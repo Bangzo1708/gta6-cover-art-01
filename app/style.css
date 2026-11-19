@@ -1,12 +1,108 @@
-html, body { margin: 0; height: 100%; background: #f2f0f4; color: #1d1b22; font: 15px/1.4 system-ui, sans-serif; }
-.app { display: flex; gap: 32px; align-items: center; justify-content: center; height: 100%; padding: 24px; box-sizing: border-box; }
-.controls { display: flex; flex-direction: column; gap: 14px; width: 280px; }
-.controls h1 { margin: 0; font-size: 28px; }
-.controls p { margin: 0; color: #5c5866; }
-label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
-input[type=text] { font: inherit; padding: 8px; border: 1px solid #c9c4d1; border-radius: 6px; }
-button { font: inherit; font-weight: 700; padding: 10px; border: 0; border-radius: 6px; background: #1d1b22; color: #fff; cursor: pointer; }
-canvas { width: min(70vh, 60vw); height: min(70vh, 60vw); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
-body.shot-cover .controls { display: none; }
-body.shot-cover .app { padding: 0; }
-body.shot-cover canvas { width: 100vw; height: 100vh; box-shadow: none; }
+:root {
+  --ink: #f5eef7;
+  --ink-dim: #b9a8c2;
+  --panel: #1b1024;
+  --panel-2: #241633;
+  --line: #3d2a52;
+  --pink: #ff2e88;
+  --orange: #ff7a2f;
+  --cyan: #2ee6ff;
+  --gold: #ffc44d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background-color: #120a1a;
+  background-image:
+    radial-gradient(900px 500px at 85% -10%, rgba(255, 46, 136, .28), transparent 60%),
+    radial-gradient(700px 500px at -10% 110%, rgba(46, 230, 255, .14), transparent 60%);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.masthead {
+  display: flex; flex-wrap: wrap; gap: 6px 24px; align-items: baseline;
+  padding: 18px 28px 10px;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--orange), var(--pink) 55%, #7b2fff);
+  color: #fff; font-weight: 900; font-style: italic; letter-spacing: .02em;
+  box-shadow: 0 0 18px rgba(255, 46, 136, .55);
+}
+.brand-name { font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: .06em; }
+.brand-sub { margin: 0; color: var(--ink-dim); font-size: 13px; }
+.studio {
+  display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 28px;
+  padding: 8px 28px 28px; align-items: start;
+}
+.panel-controls { display: flex; flex-direction: column; gap: 16px; }
+.block {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+.block h2 { margin: 0 0 12px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.field { display: flex; flex-direction: column; gap: 6px; font-weight: 650; font-size: 13px; margin-bottom: 10px; }
+.field input[type=text] {
+  font: inherit; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: #120a1a; color: var(--ink);
+}
+.field input[type=text]:focus { outline: 2px solid var(--pink); outline-offset: 1px; }
+.dropzone {
+  display: flex; flex-direction: column; gap: 2px; align-items: center; text-align: center;
+  padding: 18px 10px; border: 2px dashed var(--line); border-radius: 10px; cursor: pointer;
+  background: var(--panel-2);
+}
+.dropzone:hover, .dropzone.over { border-color: var(--pink); }
+.dropzone strong { font-size: 15px; }
+.dropzone span { color: var(--ink-dim); font-size: 12px; }
+.dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.sample-row { display: flex; gap: 8px; margin-top: 10px; }
+.sample-row button, .choice {
+  font: inherit; font-weight: 650; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+}
+.sample-row button:hover, .choice:hover { border-color: var(--pink); }
+.choice-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.choice.active { background: linear-gradient(135deg, var(--orange), var(--pink)); border-color: transparent; color: #fff; }
+.tray { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 8px; }
+.tray img {
+  width: 64px; height: 64px; object-fit: cover; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent;
+}
+.tray img.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(255, 196, 77, .4); }
+.tray .empty { color: var(--ink-dim); font-size: 13px; }
+.hint { margin: 10px 0 0; color: var(--ink-dim); font-size: 12.5px; }
+.linklike {
+  font: inherit; color: var(--cyan); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline;
+}
+.export {
+  width: 100%; font: inherit; font-size: 16px; font-weight: 800; padding: 12px; border: 0; border-radius: 10px;
+  background: linear-gradient(135deg, var(--orange), var(--pink) 60%, #7b2fff); color: #fff; cursor: pointer;
+  box-shadow: 0 6px 22px rgba(255, 46, 136, .4);
+}
+.export:hover { filter: brightness(1.12); }
+#status { min-height: 1.2em; margin: 8px 0 0; color: var(--ink-dim); font-size: 13px; }
+.stage { display: flex; flex-direction: column; align-items: center; gap: 10px; position: sticky; top: 12px; }
+#coverCanvas {
+  max-width: 100%; max-height: calc(100vh - 150px); width: auto; height: auto;
+  border-radius: 6px; box-shadow: 0 24px 70px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .08);
+  background: #2b1838; touch-action: none; cursor: grab;
+}
+#coverCanvas:active { cursor: grabbing; }
+.stage-note { margin: 0; color: var(--ink-dim); font-size: 13px; }
+input[type=range] { width: 100%; accent-color: var(--pink); }
+
+/* Screenshot scenes: cover alone fills the frame, editor keeps the full studio. */
+body.shot-cover .masthead, body.shot-cover .panel-controls, body.shot-cover .stage-note { display: none; }
+body.shot-cover .studio { display: block; padding: 0; }
+body.shot-cover .stage { position: static; }
+body.shot-cover #coverCanvas {
+  width: 100vw; height: 100vh; max-width: none; max-height: none;
+  object-fit: contain; border-radius: 0; box-shadow: none; background: #000;
+}
+@media (max-width: 900px) {
+  .studio { grid-template-columns: 1fr; }
+  .stage { position: static; }
+}

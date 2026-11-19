@@ -1,40 +1,89 @@
-// A working gta6-cover-art-01 entry (Node 22, standard library only): the app is this directory's app/ folder, plain
-// static files a desktop browser loads offline (app/index.html and its ES modules, no library and no network
-// request), and the program hands it in. It copies app/ and screenshots/ from beside this file to /output and writes
-// /output/dossier.json, the summary the judge reads, with the vendored make.fun library. Only the plumbing, not the
-// cover art the bounty asks for: Cover Snap, a plain one-photo square cover with a sunset tint and a bold caption,
-// exported as a 1080 x 1080 PNG. Its two sample photos (app/samples/) were made for make.fun with an image model and
-// are free to use. Build your own GTA-style cover maker in its place, put your 3 or 4 PNG or JPEG screenshots in
-// screenshots/ (the first by name is the cover) and run it.
+// Vice Cover Studio — the entry program for gta6-cover-art-01.
 //
-// Serve it locally with `node serve.ts`, then open http://localhost:8080.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
+// What it does, in plain terms: it takes the app/ folder and the
+// screenshots/ folder that sit beside this file, copies them into the output
+// directory the grader hands it, and writes dossier.json there — the summary
+// the judge reads — using the vendored make.fun library. It runs on Node 22
+// with the standard library only, no install and no network.
+//
+// Run it outside the grader like this:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// The grader sets MAKEFUN_OUTPUT_DIR itself; without it the program writes
+// to /output. Running it twice must produce byte-identical output, so it
+// never writes a timestamp, a random value, or anything that depends on the
+// clock or the machine it runs on.
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
 
-const here = fileURLToPath(new URL('.', import.meta.url));
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+// The caps the sealed scorer enforces (the kit's reference/gate.json).
+// Only text_max_bytes changes the dossier's bytes; the rest make this
+// program fail loudly where the scorer would refuse the entry, instead of
+// handing in something that cannot pass.
+const DOSSIER_CAPS = {
+  text_max_bytes: 163840,
+  screenshots: { max: 4, max_bytes: 262144 },
+  app_max_files: 993,
+  app_max_bytes: 50331648,
+  app_path_max_bytes: 1000,
+};
 
-mkdirSync(out, { recursive: true });
-cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
-mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+function repoRoot() {
+  return fileURLToPath(new URL('.', import.meta.url));
+}
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in app/ or 48 MiB of app
-// files, in all, or a path under app/ over 1000 bytes: app/ counts beside /output's own 1000-entry cap, its
-// screenshots/ and dossier.json).
-writeFileSync(
-  join(out, 'dossier.json'),
-  buildDossier(out, {
-    text_max_bytes: 163840,
-    screenshots: { max: 4, max_bytes: 262144 },
-    app_max_files: 993,
-    app_max_bytes: 50331648,
-    app_path_max_bytes: 1000,
-  }),
-);
+function outputDir() {
+  const fromEnv = process.env.MAKEFUN_OUTPUT_DIR;
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  return '/output';
+}
+
+function fail(message) {
+  throw new Error(`vice-cover-studio main.ts: ${message}`);
+}
+
+function checkTreePresent(root) {
+  const appDir = join(root, 'app');
+  if (!existsSync(join(appDir, 'index.html'))) {
+    fail('app/index.html is missing — the app cannot be handed in without it');
+  }
+  const shotsDir = join(root, 'screenshots');
+  if (!existsSync(shotsDir)) fail('screenshots/ is missing');
+  const shots = readdirSync(shotsDir).filter((name) => !name.startsWith('.'));
+  if (shots.length < 3 || shots.length > 4) {
+    fail(`expected 3 or 4 screenshots, found ${shots.length}`);
+  }
+  for (const name of shots) {
+    const info = statSync(join(shotsDir, name));
+    if (!info.isFile()) fail(`screenshots/${name} is not a regular file`);
+    if (info.size > DOSSIER_CAPS.screenshots.max_bytes) {
+      fail(`screenshots/${name} is ${info.size} bytes, over the 256 KiB cap`);
+    }
+  }
+}
+
+function copyEntry(root, out) {
+  mkdirSync(out, { recursive: true });
+  // Clear last run's copies first: a stale screenshot or app file that was
+  // deleted from the repo must not survive into the handed-in output.
+  rmSync(join(out, 'app'), { recursive: true, force: true });
+  rmSync(join(out, 'screenshots'), { recursive: true, force: true });
+  cpSync(join(root, 'app'), join(out, 'app'), { recursive: true });
+  const shotsOut = join(out, 'screenshots');
+  mkdirSync(shotsOut, { recursive: true });
+  cpSync(join(root, 'screenshots'), shotsOut, { recursive: true });
+}
+
+function writeDossier(out) {
+  const dossier = buildDossier(out, DOSSIER_CAPS);
+  writeFileSync(join(out, 'dossier.json'), dossier);
+}
+
+const root = repoRoot();
+const out = outputDir();
+checkTreePresent(root);
+copyEntry(root, out);
+writeDossier(out);
+console.log(`vice-cover-studio: wrote ${out}/dossier.json`);
